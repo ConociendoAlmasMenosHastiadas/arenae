@@ -4,6 +4,7 @@
 /// the best choice for future GPU expansion (noted in v0.1.0 plan).
 
 use ndarray::Array2;
+use crate::colors::ParticleMetadata;
 
 /// Represents different cell types in the simulation
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -18,6 +19,8 @@ pub struct Grid {
     /// 2D array representing the grid state
     /// Shape is (height, width) - row-major order
     cells: Array2<Cell>,
+    /// Metadata for each cell (for coloring)
+    pub metadata: Array2<ParticleMetadata>,
     pub width: usize,
     pub height: usize,
 }
@@ -27,6 +30,7 @@ impl Grid {
     pub fn new(width: usize, height: usize) -> Self {
         Self {
             cells: Array2::from_elem((height, width), Cell::Empty),
+            metadata: Array2::default((height, width)),
             width,
             height,
         }
@@ -53,18 +57,13 @@ impl Grid {
         x >= 0 && x < self.width as i32 && y >= 0 && y < self.height as i32
     }
 
-    /// Gets a reference to the cells array for rendering
-    pub fn cells(&self) -> &Array2<Cell> {
-        &self.cells
-    }
-
     /// Clears the entire grid
     pub fn clear(&mut self) {
         self.cells.fill(Cell::Empty);
     }
 
     /// Adds sand in a circular area centered at (cx, cy)
-    pub fn add_sand_circle(&mut self, cx: i32, cy: i32, radius: i32) {
+    pub fn add_sand_circle(&mut self, cx: i32, cy: i32, radius: i32, frame: u64) {
         let r_squared = radius * radius;
         for dy in -radius..=radius {
             for dx in -radius..=radius {
@@ -72,7 +71,11 @@ impl Grid {
                     let x = cx + dx;
                     let y = cy + dy;
                     if self.in_bounds(x, y) {
-                        self.set(x as usize, y as usize, Cell::Sand);
+                        let ux = x as usize;
+                        let uy = y as usize;
+                        self.set(ux, uy, Cell::Sand);
+                        // Initialize metadata for new particle
+                        self.metadata[[uy, ux]] = ParticleMetadata::new(frame, ux, uy);
                     }
                 }
             }
